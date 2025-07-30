@@ -145,9 +145,26 @@ func kickUnverifiedUser(bot *tgbotapi.BotAPI, db *database.Client, chatID int64,
 
 // sendWelcomeMessage sends the welcome message to the group.
 func sendWelcomeMessage(bot *tgbotapi.BotAPI, chatID int64, firstName string) {
-	welcomeText := fmt.Sprintf(`🎉 Welcome to BYB BUILDERS COMMUNITY– Block by Block! 🚀
+	welcomeText := fmt.Sprintf(`🎉 %s Welcome to BYB BUILDERS COMMUNITY– Block by Block! 🚀
 
-A big welcome to our newest member, %s! They've just been verified and are now officially part of the family. 💪🏽🧱`, firstName)
+Hey there, builder! We're so glad to have you in the family. This space is where future Web3 legends are made, and you’re now officially one of us. 💪🏽🧱
+
+Here’s what we ask from every member:
+
+🤝 Be kind and respectful – we're a supportive family, not a battleground.
+
+🧠 Come with the mindset to learn, grow, and build.
+
+🚫 No insults, no F-word, no negativity – we keep it clean and empowering.
+
+🌍 Share your journey! Feel free to introduce yourself – what do you do or want to do in Web3?
+
+
+Whether you're here to explore DeFi, NFTs, DAOs, or just make new connections — you're in the right place.
+
+Let’s build something great, block by block. 🧱🧱🧱
+
+#BYBFam 💚`, firstName)
 	msg := tgbotapi.NewMessage(chatID, welcomeText)
 	bot.Send(msg)
 }

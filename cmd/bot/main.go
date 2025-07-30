@@ -9,7 +9,6 @@ import (
 	"github.com/philip-857.bit/byb-bot/internal/commands"
 	"github.com/philip-857.bit/byb-bot/internal/config"
 	"github.com/philip-857.bit/byb-bot/internal/database"
-	"github.com/philip-857.bit/byb-bot/internal/web3"
 )
 
 func main() {
@@ -29,8 +28,10 @@ func main() {
 	}
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
+	// Explicitly register commands after config is loaded to ensure dependencies are ready.
+	commands.RegisterCommands(cfg)
+
 	botsetup.SetDefaultCommands(bot)
-	web3.Cfg = cfg
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -43,31 +44,37 @@ func main() {
 }
 
 func handleUpdate(bot *tgbotapi.BotAPI, db *database.Client, update tgbotapi.Update) {
-	// Handle button clicks (Callback Queries)
+	// Handle button clicks (Callback Queries) first, as they are a distinct update type.
 	if update.CallbackQuery != nil {
 		captcha.HandleCallbackQuery(bot, db, update.CallbackQuery)
 		return
 	}
 
-	// Handle regular messages
-	if update.Message != nil {
-		// If the bot is added to a new group, set the group-specific commands
-		if len(update.Message.NewChatMembers) > 0 {
-			for _, member := range update.Message.NewChatMembers {
-				if member.ID == bot.Self.ID {
-					log.Printf("Bot added to new group: %s (%d)", update.Message.Chat.Title, update.Message.Chat.ID)
-					botsetup.SetGroupCommands(bot, update.Message.Chat.ID)
-				}
+	// Handle all message-based updates.
+	if update.Message == nil {
+		return
+	}
+
+	// The switch statement now cleanly routes all message types.
+	switch {
+	case update.Message.IsCommand():
+		commands.Handle(bot, db, update.Message)
+
+	case len(update.Message.NewChatMembers) > 0:
+		// Check if the bot itself was added to a new group.
+		for _, member := range update.Message.NewChatMembers {
+			if member.ID == bot.Self.ID {
+				log.Printf("Bot added to new group: %s (%d)", update.Message.Chat.Title, update.Message.Chat.ID)
+				botsetup.SetGroupCommands(bot, update.Message.Chat.ID)
 			}
 		}
+		// Also handle the new members for CAPTCHA verification.
+		captcha.HandleNewMember(bot, db, update.Message)
 
-		switch {
-		case update.Message.IsCommand():
-			commands.Handle(bot, db, update.Message)
-		case len(update.Message.NewChatMembers) > 0:
-			captcha.HandleNewMember(bot, db, update.Message)
-		case update.Message.LeftChatMember != nil:
-			captcha.HandleLeavingMember(bot, db, update.Message)
-		}
+	case update.Message.LeftChatMember != nil:
+		captcha.HandleLeavingMember(bot, db, update.Message)
+
+		// REMOVED: The case for `update.Message.Chat.IsPrivate()` was removed as it's no longer needed.
+		// Verification is now handled by the CallbackQuery above.
 	}
 }
