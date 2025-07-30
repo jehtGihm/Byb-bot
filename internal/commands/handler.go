@@ -67,7 +67,7 @@ func handleRulesCommand(bot *tgbotapi.BotAPI, db *database.Client, message *tgbo
 2.  *Stay On Topic*: Keep discussions related to Web3, building, and technology.
 3.  *No Spam*: Unsolicited promotions or spam are strictly forbidden.
 4.  *Help Each Other*: Come with a mindset to learn, grow, and build together.
-5.  *🚫 No insults, no F-word, no negativity – we keep it clean and empowering.`
+5.  *No Insults, No F-word, No Negativity*: Keep it clean and empowering.`
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, rules)
 	msg.ParseMode = "Markdown"
