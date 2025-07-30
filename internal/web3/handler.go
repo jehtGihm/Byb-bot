@@ -69,7 +69,7 @@ func HandlePriceCommand(bot *tgbotapi.BotAPI, db *database.Client, message *tgbo
 
 // HandleGasCommand now uses the API key from the loaded configuration.
 func HandleGasCommand(bot *tgbotapi.BotAPI, db *database.Client, message *tgbotapi.Message) {
-	apiKey := Cfg.EtherscanAPIKey
+	apiKey := "D32DHB3RSUN8YU4MTUNI9Y7KRBBJI1951P"
 	if apiKey == "" {
 		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "Sorry, the gas command is not configured by the administrator."))
 		return
