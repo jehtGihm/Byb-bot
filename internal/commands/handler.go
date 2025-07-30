@@ -24,14 +24,15 @@ func init() {
 	commandRegistry["rules"] = handleRulesCommand
 	commandRegistry["help"] = handleHelpCommand
 
+	// Web3 commands
+	commandRegistry["price"] = web3.HandlePriceCommand
+	commandRegistry["p"] = web3.HandlePriceCommand
+	commandRegistry["gas"] = web3.HandleGasCommand
+
 	// Admin commands
 	commandRegistry["warn"] = moderation.HandleWarnCommand
 	commandRegistry["mute"] = moderation.HandleMuteCommand
-
-	// Web3 commands
-	commandRegistry["price"] = web3.HandlePriceCommand
-	commandRegistry["p"] = web3.HandlePriceCommand // Alias for /price
-	commandRegistry["gas"] = web3.HandleGasCommand
+	commandRegistry["setup"] = moderation.HandleSetupCommand // New command
 }
 
 // Handle is the main router for all commands.

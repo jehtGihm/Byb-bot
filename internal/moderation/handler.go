@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/philip-857.bit/byb-bot/internal/botsetup"
 	"github.com/philip-857.bit/byb-bot/internal/database"
 )
 
@@ -90,4 +91,18 @@ func HandleMuteCommand(bot *tgbotapi.BotAPI, db *database.Client, message *tgbot
 	muteText := fmt.Sprintf("🔇 %s has been muted for %s.", userToMute.FirstName, duration.String())
 	bot.Send(tgbotapi.NewMessage(message.Chat.ID, muteText))
 	log.Printf("Admin %s muted user %s for %s", message.From.FirstName, userToMute.FirstName, duration.String())
+}
+func HandleSetupCommand(bot *tgbotapi.BotAPI, db *database.Client, message *tgbotapi.Message) {
+	if !isUserAdmin(bot, message.Chat.ID, message.From.ID) {
+		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "This command is for admins only."))
+		return
+	}
+
+	if message.Chat.IsPrivate() {
+		bot.Send(tgbotapi.NewMessage(message.Chat.ID, "This command can only be used in a group chat."))
+		return
+	}
+
+	botsetup.SetGroupCommands(bot, message.Chat.ID)
+	bot.Send(tgbotapi.NewMessage(message.Chat.ID, "✅ Bot commands have been updated for this group's members and admins."))
 }

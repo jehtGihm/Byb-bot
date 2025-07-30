@@ -4,6 +4,7 @@ import (
 	"log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/philip-857.bit/byb-bot/internal/botsetup"
 	"github.com/philip-857.bit/byb-bot/internal/captcha"
 	"github.com/philip-857.bit/byb-bot/internal/commands"
 	"github.com/philip-857.bit/byb-bot/internal/config"
@@ -12,29 +13,26 @@ import (
 )
 
 func main() {
-	// 1. Load Configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Could not load config: %v", err)
 	}
 
-	// 2. Connect to Database
 	db, err := database.NewClient(cfg.SupabaseURL, cfg.SupabaseKey)
 	if err != nil {
 		log.Fatalf("Could not connect to Supabase: %v", err)
 	}
 
-	// 3. Initialize Telegram Bot
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
 		log.Panic(err)
 	}
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	// Pass the loaded config to the web3 package so its handlers can use it.
+	// Set default commands for private chats and the general command list
+	botsetup.SetDefaultCommands(bot)
 	web3.Cfg = cfg
 
-	// 4. Start Update Loop
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	updates := bot.GetUpdatesChan(u)
@@ -45,10 +43,19 @@ func main() {
 	}
 }
 
-// handleUpdate function routes all incoming messages to the correct package.
 func handleUpdate(bot *tgbotapi.BotAPI, db *database.Client, update tgbotapi.Update) {
 	if update.Message == nil {
 		return
+	}
+
+	// If the bot is added to a new group, set the group-specific commands
+	if update.Message.NewChatMembers != nil {
+		for _, member := range update.Message.NewChatMembers {
+			if member.ID == bot.Self.ID {
+				log.Printf("Bot added to new group: %s (%d)", update.Message.Chat.Title, update.Message.Chat.ID)
+				botsetup.SetGroupCommands(bot, update.Message.Chat.ID)
+			}
+		}
 	}
 
 	switch {
@@ -56,7 +63,7 @@ func handleUpdate(bot *tgbotapi.BotAPI, db *database.Client, update tgbotapi.Upd
 		commands.Handle(bot, db, update.Message)
 	case len(update.Message.NewChatMembers) > 0:
 		captcha.HandleNewMember(bot, db, update.Message)
-	case update.Message.ReplyToMessage != nil:
+	case update.Message.Chat.IsPrivate():
 		captcha.HandleCaptchaReply(bot, db, update.Message)
 	case update.Message.LeftChatMember != nil:
 		captcha.HandleLeavingMember(bot, db, update.Message)

@@ -75,7 +75,7 @@ func HandleGasCommand(bot *tgbotapi.BotAPI, db *database.Client, message *tgbota
 		return
 	}
 
-	apiURL := fmt.Sprintf("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=%s", apiKey)
+	apiURL := fmt.Sprintf("https://api.etherscan.io/v2/api?chainid=1&module=gastracker&action=gasoracle&apikey=%s", apiKey)
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
