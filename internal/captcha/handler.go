@@ -14,10 +14,10 @@ import (
 	"github.com/philip-857.bit/byb-bot/internal/models"
 )
 
-// pendingUser now only needs to track the user's presence.
 var (
-	pendingUsers = make(map[int64]bool)
-	mu           sync.Mutex
+	pendingUsers          = make(map[int64]bool)
+	lastWelcomeMessageIDs = make(map[int64]int) // Tracks the last welcome message ID per chat
+	mu                    sync.Mutex
 )
 
 const captchaTimeout = 2 * time.Minute
@@ -29,7 +29,6 @@ func HandleNewMember(bot *tgbotapi.BotAPI, db *database.Client, message *tgbotap
 			continue
 		}
 
-		// Create the verification button. The CallbackData contains the action and the target user ID.
 		verifyButton := tgbotapi.NewInlineKeyboardButtonData("✅ Click here to verify", fmt.Sprintf("verify_%d", user.ID))
 		keyboard := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(verifyButton),
@@ -55,9 +54,7 @@ func HandleNewMember(bot *tgbotapi.BotAPI, db *database.Client, message *tgbotap
 
 // HandleCallbackQuery processes the button click from the verification message.
 func HandleCallbackQuery(bot *tgbotapi.BotAPI, db *database.Client, query *tgbotapi.CallbackQuery) {
-	// The user who clicked the button
 	fromUser := query.From
-	// The data from the button, e.g., "verify_12345678"
 	callbackData := query.Data
 
 	parts := strings.Split(callbackData, "_")
@@ -67,9 +64,7 @@ func HandleCallbackQuery(bot *tgbotapi.BotAPI, db *database.Client, query *tgbot
 
 	targetUserID, _ := strconv.ParseInt(parts[1], 10, 64)
 
-	// IMPORTANT: Only the new user is allowed to click their own verification button.
 	if fromUser.ID != targetUserID {
-		// Send a silent, temporary message only visible to the person who clicked.
 		callback := tgbotapi.NewCallback(query.ID, "This is not your verification button.")
 		bot.Request(callback)
 		return
@@ -82,16 +77,13 @@ func HandleCallbackQuery(bot *tgbotapi.BotAPI, db *database.Client, query *tgbot
 	if exists && isPending {
 		log.Printf("User %s (%d) passed button verification", fromUser.FirstName, fromUser.ID)
 
-		// Instantly delete the verification message.
 		deleteMsg := tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID)
 		bot.Request(deleteMsg)
 
-		// Remove user from the pending list to prevent kicking.
 		mu.Lock()
 		delete(pendingUsers, fromUser.ID)
 		mu.Unlock()
 
-		// Add user to the database.
 		newUser := models.User{
 			TelegramID: fromUser.ID,
 			FirstName:  fromUser.FirstName,
@@ -102,10 +94,8 @@ func HandleCallbackQuery(bot *tgbotapi.BotAPI, db *database.Client, query *tgbot
 			log.Printf("Failed to add user to DB: %v", err)
 		}
 
-		// Send the welcome message to the group.
 		sendWelcomeMessage(bot, query.Message.Chat.ID, fromUser.FirstName)
 
-		// Answer the callback query to confirm the action.
 		callback := tgbotapi.NewCallback(query.ID, "Verification successful!")
 		bot.Request(callback)
 	}
@@ -137,14 +127,19 @@ func kickUnverifiedUser(bot *tgbotapi.BotAPI, db *database.Client, chatID int64,
 		}
 		bot.Request(kickConfig)
 
-		// Also delete the original verification message on timeout.
 		bot.Send(tgbotapi.NewDeleteMessage(chatID, captchaMsgID))
 		delete(pendingUsers, userID)
 	}
 }
 
-// sendWelcomeMessage sends the welcome message to the group.
+// sendWelcomeMessage now deletes the previous welcome message and sends the new, detailed one.
 func sendWelcomeMessage(bot *tgbotapi.BotAPI, chatID int64, firstName string) {
+	mu.Lock()
+	if oldMsgID, ok := lastWelcomeMessageIDs[chatID]; ok {
+		bot.Request(tgbotapi.NewDeleteMessage(chatID, oldMsgID))
+	}
+	mu.Unlock()
+
 	welcomeText := fmt.Sprintf(`🎉 %s Welcome to BYB BUILDERS COMMUNITY– Block by Block! 🚀
 
 Hey there, builder! We're so glad to have you in the family. This space is where future Web3 legends are made, and you’re now officially one of us. 💪🏽🧱
@@ -165,6 +160,15 @@ Whether you're here to explore DeFi, NFTs, DAOs, or just make new connections �
 Let’s build something great, block by block. 🧱🧱🧱
 
 #BYBFam 💚`, firstName)
+
 	msg := tgbotapi.NewMessage(chatID, welcomeText)
-	bot.Send(msg)
+	sentMsg, err := bot.Send(msg)
+	if err != nil {
+		log.Printf("Failed to send welcome message: %v", err)
+		return
+	}
+
+	mu.Lock()
+	lastWelcomeMessageIDs[chatID] = sentMsg.MessageID
+	mu.Unlock()
 }
