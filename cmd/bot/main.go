@@ -29,7 +29,6 @@ func main() {
 	}
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	// Set default commands for private chats and the general command list
 	botsetup.SetDefaultCommands(bot)
 	web3.Cfg = cfg
 
@@ -44,28 +43,31 @@ func main() {
 }
 
 func handleUpdate(bot *tgbotapi.BotAPI, db *database.Client, update tgbotapi.Update) {
-	if update.Message == nil {
+	// Handle button clicks (Callback Queries)
+	if update.CallbackQuery != nil {
+		captcha.HandleCallbackQuery(bot, db, update.CallbackQuery)
 		return
 	}
 
-	// If the bot is added to a new group, set the group-specific commands
-	if update.Message.NewChatMembers != nil {
-		for _, member := range update.Message.NewChatMembers {
-			if member.ID == bot.Self.ID {
-				log.Printf("Bot added to new group: %s (%d)", update.Message.Chat.Title, update.Message.Chat.ID)
-				botsetup.SetGroupCommands(bot, update.Message.Chat.ID)
+	// Handle regular messages
+	if update.Message != nil {
+		// If the bot is added to a new group, set the group-specific commands
+		if len(update.Message.NewChatMembers) > 0 {
+			for _, member := range update.Message.NewChatMembers {
+				if member.ID == bot.Self.ID {
+					log.Printf("Bot added to new group: %s (%d)", update.Message.Chat.Title, update.Message.Chat.ID)
+					botsetup.SetGroupCommands(bot, update.Message.Chat.ID)
+				}
 			}
 		}
-	}
 
-	switch {
-	case update.Message.IsCommand():
-		commands.Handle(bot, db, update.Message)
-	case len(update.Message.NewChatMembers) > 0:
-		captcha.HandleNewMember(bot, db, update.Message)
-	case update.Message.Chat.IsPrivate():
-		captcha.HandleCaptchaReply(bot, db, update.Message)
-	case update.Message.LeftChatMember != nil:
-		captcha.HandleLeavingMember(bot, db, update.Message)
+		switch {
+		case update.Message.IsCommand():
+			commands.Handle(bot, db, update.Message)
+		case len(update.Message.NewChatMembers) > 0:
+			captcha.HandleNewMember(bot, db, update.Message)
+		case update.Message.LeftChatMember != nil:
+			captcha.HandleLeavingMember(bot, db, update.Message)
+		}
 	}
 }
