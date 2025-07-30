@@ -11,8 +11,9 @@ func SetDefaultCommands(bot *tgbotapi.BotAPI) {
 	userCommands := []tgbotapi.BotCommand{
 		{Command: "start", Description: "Welcome message"},
 		{Command: "rules", Description: "Show community rules"},
-		{Command: "help", Description: "Show list of commands"},
+		{Command: "help", Description: "Show this help message"},
 		{Command: "price", Description: "Get cryptocurrency price"},
+		{Command: "p", Description: "Alias for /price"}, // Added /p alias
 		{Command: "gas", Description: "Get current Ethereum gas fees"},
 	}
 
@@ -27,8 +28,9 @@ func SetGroupCommands(bot *tgbotapi.BotAPI, chatID int64) {
 	// Commands for regular users in the group
 	userCommands := []tgbotapi.BotCommand{
 		{Command: "rules", Description: "Show community rules"},
-		{Command: "help", Description: "Show list of commands"},
+		{Command: "help", Description: "Show this help message"},
 		{Command: "price", Description: "Get cryptocurrency price"},
+		{Command: "p", Description: "Alias for /price"}, // Added /p alias
 		{Command: "gas", Description: "Get current Ethereum gas fees"},
 	}
 	userScope := tgbotapi.NewBotCommandScopeChat(chatID)
@@ -40,8 +42,9 @@ func SetGroupCommands(bot *tgbotapi.BotAPI, chatID int64) {
 	// Commands for admins in the group (includes all user commands + admin commands)
 	adminCommands := []tgbotapi.BotCommand{
 		{Command: "rules", Description: "Show community rules"},
-		{Command: "help", Description: "Show list of commands"},
+		{Command: "help", Description: "Show this help message"},
 		{Command: "price", Description: "Get cryptocurrency price"},
+		{Command: "p", Description: "Alias for /price"}, // Added /p alias
 		{Command: "gas", Description: "Get current Ethereum gas fees"},
 		{Command: "warn", Description: "(Admin) Warn a user"},
 		{Command: "mute", Description: "(Admin) Mute a user"},

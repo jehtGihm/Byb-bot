@@ -38,10 +38,10 @@ func Load() (*Config, error) {
 	}
 
 	// Load the new key from the environment.
-	etherscanKey := os.Getenv("ETHERSCAN_API_KEY")
+	etherscanKey := os.Getenv("EtherscanAPIKey")
 	if etherscanKey == "" {
 		// We'll log a warning but not fail, so the bot can run without the /gas command.
-		log.Println("WARNING: ETHERSCAN_API_KEY not set. The /gas command will not work.")
+		log.Println("WARNING: EtherscanAPIKey not set. The /gas command will not work.")
 	}
 
 	return &Config{
